@@ -12,63 +12,78 @@ from diffusers.models.modeling_utils import ModelMixin
 from diffusers.utils import BaseOutput
 from diffusers.models.attention import BasicTransformerBlock
 from torch import nn
-    
-class caTConvs(nn.Module):
-    def __init__(self, dim, kernel_size, num_layers):
+ 
+class TemporalConvLayer(nn.Module):
+    """
+    Temporal convolutional layer that can be used for video (sequence of images) input Code mostly copied from:
+    https://github.com/modelscope/modelscope/blob/1509fdb973e5871f37148a4b5e5964cafd43e64d/modelscope/models/multi_modal/video_synthesis/unet_sd.py#L1016
+
+    Parameters:
+        in_dim (`int`): Number of input channels.
+        out_dim (`int`): Number of output channels.
+        dropout (`float`, *optional*, defaults to `0.0`): The dropout probability to use.
+    """
+
+    def __init__(
+        self,
+        in_dim: int,
+        out_dim: Optional[int] = None,
+        dropout: float = 0.0,
+        norm_num_groups: int = 32,
+    ):
         super().__init__()
+        out_dim = out_dim or in_dim
+        self.in_dim = in_dim
+        self.out_dim = out_dim
+        
+        # conv layers
+        self.conv1 = nn.Sequential(
+            nn.GroupNorm(norm_num_groups, in_dim),
+            nn.SiLU(),
+            nn.Conv3d(in_dim, out_dim, (3, 1, 1), padding=(1, 0, 0)),
+        )
+        self.conv2 = nn.Sequential(
+            nn.GroupNorm(norm_num_groups, out_dim),
+            nn.SiLU(),
+            nn.Dropout(dropout),
+            nn.Conv3d(out_dim, in_dim, (3, 1, 1), padding=(1, 0, 0)),
+        )
+        self.conv3 = nn.Sequential(
+            nn.GroupNorm(norm_num_groups, out_dim),
+            nn.SiLU(),
+            nn.Dropout(dropout),
+            nn.Conv3d(out_dim, in_dim, (3, 1, 1), padding=(1, 0, 0)),
+        )
+        self.conv4 = nn.Sequential(
+            nn.GroupNorm(norm_num_groups, out_dim),
+            nn.SiLU(),
+            nn.Dropout(dropout),
+            nn.Conv3d(out_dim, in_dim, (3, 1, 1), padding=(1, 0, 0)),
+        )
 
-        self.spatio_temporal_convs = ConvBlocks(dim, num_layers=num_layers, kernel_size=kernel_size, dropout=0.1)
+        # zero out the last layer params,so the conv block is identity
+        nn.init.zeros_(self.conv4[-1].weight)
+        nn.init.zeros_(self.conv4[-1].bias)
 
-    def forward(self, hidden_states, num_frames):
+    def forward(self, hidden_states: torch.Tensor, num_frames: int = 1) -> torch.Tensor:
         hidden_states = (
             hidden_states[None, :].reshape((-1, num_frames) + hidden_states.shape[1:]).permute(0, 2, 1, 3, 4)
         )
 
-        hidden_states = self.spatio_temporal_convs(hidden_states)
+        identity = hidden_states
+
+        hidden_states = self.conv1(hidden_states)
+        hidden_states = self.conv2(hidden_states)
+        hidden_states = self.conv3(hidden_states)
+        hidden_states = self.conv4(hidden_states)
+        
+        hidden_states = identity + hidden_states
 
         hidden_states = hidden_states.permute(0, 2, 1, 3, 4).reshape(
             (hidden_states.shape[0] * hidden_states.shape[2], -1) + hidden_states.shape[3:]
         )
-
         return hidden_states
     
-class ConvBlocks(nn.Module):
-    def __init__(
-        self,
-        dim: int,
-        num_layers: int = 1,
-        kernel_size: int = 3,
-        dropout: float = 0.1,
-        norm_num_groups: int = 32,
-    ):
-        super().__init__()
-        self.dim = dim
-        self.num_layers = num_layers
-        self.kernel_size = kernel_size
-        self.padding = (self.kernel_size - 1) // 2
-
-        self.convs = nn.ModuleList()
-        for i in range(num_layers):
-            layer = nn.Sequential(
-                nn.GroupNorm(min(norm_num_groups, dim), dim),
-                nn.SiLU(),
-                nn.Dropout(dropout) if i > 0 else nn.Identity(), 
-                nn.Conv3d(dim, dim, (self.kernel_size, self.kernel_size, self.kernel_size), padding=(self.padding, self.padding, self.padding))
-            )
-            self.convs.append(layer)
-
-        #nn.init.zeros_(self.convs[-1][-1].weight)
-        #nn.init.zeros_(self.convs[-1][-1].bias)
-
-    def forward(self, hidden_states):
-        residual = hidden_states
-
-        for conv in self.convs:
-            hidden_states = conv(hidden_states)
-
-        hidden_states = residual + hidden_states
-        return hidden_states
- 
 class BiDirectionalExponentialEncodings(nn.Module):
     def __init__(self):
         super(BiDirectionalExponentialEncodings, self).__init__()
@@ -209,4 +224,3 @@ class caTConditioningTransformerModel(ModelMixin, ConfigMixin):
             return (output,)
 
         return caTConditioningTransformerOutput(sample=output)
-
