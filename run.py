@@ -1,19 +1,16 @@
-import argparse
 import torch
 import random
-import subprocess
-import json
 import numpy as np
 import cv2
-import os
 import gradio as gr
 
-from models.caT import caT
 from pipeline.caT import caTPipeline
-from diffusers.models.attention import BasicTransformerBlock
-from diffusers.models.attention_processor import AttnProcessor2_0
-from diffusers import DPMSolverMultistepScheduler
-from diffusers.models import AutoencoderKL
+from huggingface_hub import snapshot_download
+
+repo_id = "motexture/caT-text-to-video"
+local_dir = "./model"
+
+snapshot_download(repo_id, local_dir=local_dir)
 
 WIDTH = 320
 HEIGHT = 320
@@ -30,7 +27,7 @@ def set_seed(seed):
 class VideoGenerator:
     def __init__(self):
         self.device = "cuda:1"
-        self.pipeline = self.initialize_pipeline("motexture/caT-text-to-video")
+        self.pipeline = self.initialize_pipeline(repo_id)
         self.stacked_latents = None
         self.previous_latents = None
         self.generated = False
@@ -38,7 +35,7 @@ class VideoGenerator:
 
     def initialize_pipeline(self, model):  
         print("Loading pipeline...")
-        pipeline = caTPipeline.from_pretrained(pretrained_model_name_or_path=model).to(self.device)
+        pipeline = caTPipeline.from_pretrained(pretrained_model_name_or_path=local_dir).to(self.device)
         #pipeline.scheduler = DPMSolverMultistepScheduler.from_config(pipeline.scheduler.config, timestep_spacing="trailing", algorithm_type="sde-dpmsolver++")
         pipeline.vae.enable_slicing()
 
