@@ -1,7 +1,7 @@
 ---
 license: apache-2.0
 ---
-# caT Text To Video
+# caT text to video
 
 Conditionally augmented text-to-video model. Uses pre-trained weights from modelscope text-to-video model, augmented with temporal conditioning transformers to create a smooth transition between clips.
 
