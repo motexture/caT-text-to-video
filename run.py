@@ -26,7 +26,7 @@ def set_seed(seed):
 class VideoGenerator:
     def __init__(self):
         self.device = "cuda:1"
-        self.pipeline = self.initialize_pipeline("caT4/train_2024-12-05T16-27-57/validated-4000")
+        self.pipeline = self.initialize_pipeline("motexture/caT")
         self.stacked_latents = None
         self.previous_latents = None
         self.generated = False
