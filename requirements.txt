@@ -1,14 +1,8 @@
-accelerate==0.31.0
-decord==0.6.0
 diffusers==0.31.0
 gradio==5.8.0
-mpi4py==4.0.0
 numpy==2.2.0
-omegaconf==2.3.0
 opencv_python==4.10.0.84
 pandas==2.2.3
-Requests==2.32.3
 safetensors==0.4.5
 torch==2.4.0
-tqdm==4.66.4
 transformers==4.46.2
