@@ -3,7 +3,9 @@ license: apache-2.0
 ---
 # caT text to video
 
-Conditionally augmented text-to-video model. Uses pre-trained weights from modelscope text-to-video model, augmented with temporal conditioning transformers to create a smooth transition between clips.
+Conditionally augmented text-to-video model. Uses pre-trained weights from modelscope text-to-video model, augmented with temporal conditioning transformers to extend generated clips and create a smooth transition between them.
+
+This project was trained at home as a hobby.
 
 ## Installation
 
