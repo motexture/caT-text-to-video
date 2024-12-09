@@ -10,7 +10,7 @@ Conditionally augmented text-to-video model. Uses pre-trained weights from model
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/motexture/caT.git
+git clone https://github.com/motexture/caT-text-to-video.git
 cd caT
 python -m venv venv
 source venv/bin/activate  # On Windows use `venv\Scripts\activate`
