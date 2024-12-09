@@ -6,6 +6,7 @@ import gradio as gr
 
 from pipeline.caT import caTPipeline
 from huggingface_hub import snapshot_download
+from diffusers import DPMSolverMultistepScheduler
 
 repo_id = "motexture/caT-text-to-video"
 local_dir = "./model"
@@ -36,7 +37,7 @@ class VideoGenerator:
     def initialize_pipeline(self, model):  
         print("Loading pipeline...")
         pipeline = caTPipeline.from_pretrained(pretrained_model_name_or_path=local_dir).to(self.device)
-        #pipeline.scheduler = DPMSolverMultistepScheduler.from_config(pipeline.scheduler.config, timestep_spacing="trailing", algorithm_type="sde-dpmsolver++")
+        pipeline.scheduler = DPMSolverMultistepScheduler.from_config(pipeline.scheduler.config, timestep_spacing="trailing", algorithm_type="sde-dpmsolver++")
         pipeline.vae.enable_slicing()
 
         return pipeline
