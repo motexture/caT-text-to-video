@@ -30,7 +30,7 @@ def set_seed(seed):
 class VideoGenerator:
     def __init__(self):
         self.device = "cuda:1"
-        self.pipeline = self.initialize_pipeline("motexture/caT")
+        self.pipeline = self.initialize_pipeline("motexture/caT-text-to-video")
         self.stacked_latents = None
         self.previous_latents = None
         self.generated = False
