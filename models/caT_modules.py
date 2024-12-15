@@ -84,18 +84,21 @@ class TemporalConvLayer(nn.Module):
         )
         return hidden_states
     
-class BiDirectionalExponentialEncodings(nn.Module):
+class BiDirectionalEncodings(torch.nn.Module):
     def __init__(self):
-        super(BiDirectionalExponentialEncodings, self).__init__()
+        super(BiDirectionalEncodings, self).__init__()
 
     def _get_embeddings(self, seq_len, d_model, reverse=False):
         pe = torch.zeros(seq_len, d_model)
         position = torch.arange(0, seq_len, dtype=torch.float).unsqueeze(1)
+
+        # Normalize the position values to range [0, 1]
+        normalized_position = position / (seq_len - 1)
         
         if reverse:
-            weights = torch.exp(-position / seq_len)
+            weights = 1 - normalized_position  # Reverse: from 1 to 0
         else:
-            weights = torch.exp(position / seq_len)
+            weights = normalized_position     # Forward: from 0 to 1
 
         for i in range(d_model):
             pe[:, i] = weights.squeeze()
@@ -133,7 +136,7 @@ class caTConditioningTransformerModel(ModelMixin, ConfigMixin):
         self.hidden_ln = nn.LayerNorm(in_channels)
         self.hidden_proj_in = nn.Linear(in_channels, cross_attention_dim)
 
-        self.positional_encoding = BiDirectionalExponentialEncodings()
+        self.positional_encoding = BiDirectionalEncodings()
 
         self.transformer_blocks = nn.ModuleList(
             [
