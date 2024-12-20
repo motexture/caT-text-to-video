@@ -13,8 +13,8 @@ local_dir = "./model"
 
 snapshot_download(repo_id, local_dir=local_dir)
 
-WIDTH = 320
-HEIGHT = 320
+WIDTH = 256
+HEIGHT = 256
 NUM_FRAMES = 8
 
 def set_seed(seed):
