@@ -158,7 +158,7 @@ with gr.Blocks() as iface:
     with gr.Row():
         with gr.Column():
             prompt = gr.Textbox(label="Prompt", value="Darth Vader is surfing on the ocean")
-            negative_prompt = gr.Textbox(label="Negative Prompt", value="")
+            negative_prompt = gr.Textbox(label="Negative Prompt", value="malformed, fast motion, low quality, worse quality, blurry, watermark")
             interpolation_strength = gr.Slider(label="Interpolation Strength", minimum=0.0, maximum=1.0, step=0.1, value=0.5)
 
             num_inference_steps = gr.Slider(label="Number of Inference Steps", minimum=1, maximum=150, step=1, value=50)
