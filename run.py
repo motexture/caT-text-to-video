@@ -157,7 +157,7 @@ video_gen = VideoGenerator()
 with gr.Blocks() as iface:
     with gr.Row():
         with gr.Column():
-            prompt = gr.Textbox(label="Prompt", value="Darth Vader is surfing on the ocean")
+            prompt = gr.Textbox(label="Prompt", value="Darth Vader is surfing on the ocean, slow mo")
             negative_prompt = gr.Textbox(label="Negative Prompt", value="malformed, fast motion, low quality, worse quality, blurry, watermark")
             interpolation_strength = gr.Slider(label="Interpolation Strength", minimum=0.0, maximum=1.0, step=0.1, value=0.5)
 
