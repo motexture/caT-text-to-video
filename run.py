@@ -168,7 +168,7 @@ with gr.Blocks() as iface:
             width = gr.Slider(label="Width", minimum=192, maximum=448, step=64, value=320)
             height = gr.Slider(label="Height", minimum=192, maximum=448, step=64, value=320)
 
-            solver_type = gr.Dropdown(label="Solver Type", choices=["DDIM", "DPM++ 2M", "DPM++ 2M Karras", "DPM++ 2M SDE", "DPM++ 2M SDE Karras"], value="DPM++ 2M SDE Karras")
+            solver_type = gr.Dropdown(label="Solver Type", choices=["DDIM", "DPM++ 2M", "DPM++ 2M Karras", "DPM++ 2M SDE", "DPM++ 2M SDE Karras"], value="DPM++ 2M Karras")
 
             seed = gr.Slider(label="Seed", minimum=-1, maximum=1000000, step=1, value=-1)
         with gr.Column():
