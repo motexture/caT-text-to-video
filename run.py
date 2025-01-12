@@ -92,7 +92,7 @@ class VideoGenerator:
                     num_frames=NUM_FRAMES * 2,
                     device=self.device,
                     num_inference_steps=num_inference_steps,
-                    guidance_scale=guidance_scale,
+                    guidance_scale=1,
                     concat_latents=self.stacked_latents[:, :, -NUM_FRAMES * 2:, :, :],
                     interpolation_strength=interpolation_strength
                 )
