@@ -301,6 +301,7 @@ class caTPipeline(DiffusionPipeline, TextualInversionLoaderMixin, LoraLoaderMixi
         generator: Optional[Union[torch.Generator, List[torch.Generator]]] = None,
         latents: Optional[torch.FloatTensor] = None,
         previous_latents: Optional[torch.FloatTensor] = None,
+        concat_latents: Optional[torch.FloatTensor] = None,
         prompt_embeds: Optional[torch.FloatTensor] = None,
         negative_prompt_embeds: Optional[torch.FloatTensor] = None,
         interpolation_strength: float = 0.0
@@ -325,9 +326,17 @@ class caTPipeline(DiffusionPipeline, TextualInversionLoaderMixin, LoraLoaderMixi
         scale = self.vae_scale_factor
         shape = (1, self.unet.config.in_channels, num_frames, height // scale, width // scale)
 
-        self.scheduler.set_timesteps(num_inference_steps, device=device)  
-        timesteps = self.scheduler.timesteps[0:]
+        self.scheduler.set_timesteps(num_inference_steps, device=device)
         latents = torch.randn(shape, dtype=prompt_embeds.dtype).to(device)
+
+        if concat_latents is None:
+            timesteps = self.scheduler.timesteps[0:]
+            latents = torch.randn_like(latents)
+        else:
+            timesteps = self.scheduler.timesteps[-1:]
+            latents = self.scheduler.add_noise(
+                original_samples=concat_latents, noise=torch.randn_like(concat_latents), timesteps=timesteps
+            )
 
         with self.progress_bar(total=len(timesteps)) as progress_bar:
             for _, t in enumerate(timesteps):
