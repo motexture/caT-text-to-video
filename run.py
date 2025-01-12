@@ -85,7 +85,7 @@ class VideoGenerator:
 
             if self.stacked_latents.size(2) > NUM_FRAMES:
                 if self.stacked_latents.size(2) > NUM_FRAMES * 2:
-                    past_histogram_frame = self.stacked_latents[:, :, -NUM_FRAMES * 2 - 1:, :, :]
+                    past_histogram_frame = self.stacked_latents[:, :, -NUM_FRAMES * 2 - 1:-NUM_FRAMES * 2, :, :]
                     
                 self.stacked_latents[:, :, -NUM_FRAMES * 2:, :, :] = self.pipeline(
                     prompt=prompt,
