@@ -77,7 +77,7 @@ class caTPipeline(DiffusionPipeline, TextualInversionLoaderMixin, LoraLoaderMixi
             **kwargs,
         )
 
-        prompt_embeds = torch.cat([prompt_embeds_tuple[1], prompt_embeds_tuple[0]])
+        prompt_embeds = torch.cat([prompt_embeds_tuple[1], prompt_embeds_tuple[0]]) if do_classifier_free_guidance else prompt_embeds_tuple[0]
 
         return prompt_embeds
 
