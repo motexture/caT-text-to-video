@@ -34,7 +34,7 @@ class VideoGenerator:
 
     def initialize_pipeline(self, model):
         print("Loading pipeline...")
-        pipeline = caTPipeline.from_pretrained(pretrained_model_name_or_path=local_dir).to(self.device)
+        pipeline = caTPipeline.from_pretrained(pretrained_model_name_or_path=model).to(self.device)
         pipeline.vae.enable_slicing()
         return pipeline
 
@@ -82,6 +82,20 @@ class VideoGenerator:
             self.stacked_latents = torch.cat((self.stacked_latents, self.match_histogram(self.stacked_latents[:, :, -NUM_FRAMES:, :, :], latents)), dim=2) if self.stacked_latents is not None else latents
             self.stacked_latents = self.normalize_latents(self.stacked_latents)
             self.previous_latents = latents
+
+            if self.stacked_latents.size(2) > NUM_FRAMES:
+                self.stacked_latents[:, :, -NUM_FRAMES * 2:, :, :] = self.pipeline(
+                    prompt=prompt,
+                    negative_prompt=negative_prompt,
+                    width=width,
+                    height=height,
+                    num_frames=NUM_FRAMES * 2,
+                    device=self.device,
+                    num_inference_steps=num_inference_steps,
+                    guidance_scale=guidance_scale,
+                    concat_latents=self.stacked_latents[:, :, -NUM_FRAMES * 2:, :, :],
+                    interpolation_strength=interpolation_strength
+                )
 
             self.save_video(self.decode(self.stacked_latents), self.video_path, fps)
 
@@ -157,12 +171,12 @@ video_gen = VideoGenerator()
 with gr.Blocks() as iface:
     with gr.Row():
         with gr.Column():
-            prompt = gr.Textbox(label="Prompt", value="Darth Vader is surfing on the ocean, slow mo")
+            prompt = gr.Textbox(label="Prompt", value="Darth Vader is surfing on the ocean")
             negative_prompt = gr.Textbox(label="Negative Prompt", value="malformed, fast motion, low quality, worse quality, blurry, watermark")
             interpolation_strength = gr.Slider(label="Interpolation Strength", minimum=0.0, maximum=1.0, step=0.1, value=0.0)
 
             num_inference_steps = gr.Slider(label="Number of Inference Steps", minimum=1, maximum=150, step=1, value=20)
-            guidance_scale = gr.Slider(label="Guidance Scale", minimum=1.0, maximum=30.0, step=0.1, value=7.5)
+            guidance_scale = gr.Slider(label="Guidance Scale", minimum=1.0, maximum=30.0, step=0.1, value=14)
             fps = gr.Slider(label="FPS", minimum=1, maximum=60, step=1, value=16)
 
             width = gr.Slider(label="Width", minimum=192, maximum=448, step=64, value=320)
