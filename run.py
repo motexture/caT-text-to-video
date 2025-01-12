@@ -176,7 +176,7 @@ with gr.Blocks() as iface:
             interpolation_strength = gr.Slider(label="Interpolation Strength", minimum=0.0, maximum=1.0, step=0.1, value=0.0)
 
             num_inference_steps = gr.Slider(label="Number of Inference Steps", minimum=1, maximum=150, step=1, value=20)
-            guidance_scale = gr.Slider(label="Guidance Scale", minimum=1.0, maximum=30.0, step=0.1, value=14)
+            guidance_scale = gr.Slider(label="Guidance Scale", minimum=1.0, maximum=30.0, step=0.1, value=7.5)
             fps = gr.Slider(label="FPS", minimum=1, maximum=60, step=1, value=16)
 
             width = gr.Slider(label="Width", minimum=192, maximum=448, step=64, value=320)
