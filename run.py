@@ -84,6 +84,9 @@ class VideoGenerator:
             self.previous_latents = latents
 
             if self.stacked_latents.size(2) > NUM_FRAMES:
+                if self.stacked_latents.size(2) > NUM_FRAMES * 2:
+                    past_histogram_frame = self.stacked_latents[:, :, -NUM_FRAMES * 2 - 1:, :, :]
+                    
                 self.stacked_latents[:, :, -NUM_FRAMES * 2:, :, :] = self.pipeline(
                     prompt=prompt,
                     negative_prompt=negative_prompt,
@@ -96,6 +99,9 @@ class VideoGenerator:
                     concat_latents=self.stacked_latents[:, :, -NUM_FRAMES * 2:, :, :],
                     interpolation_strength=interpolation_strength
                 )
+                
+                if self.stacked_latents.size(2) > NUM_FRAMES * 2:
+                    self.stacked_latents[:, :, -NUM_FRAMES * 2:, :, :] = self.match_histogram(past_histogram_frame, self.stacked_latents[:, :, -NUM_FRAMES * 2:, :, :])
 
             self.save_video(self.decode(self.stacked_latents), self.video_path, fps)
 
