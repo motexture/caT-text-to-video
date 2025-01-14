@@ -26,7 +26,7 @@ def set_seed(seed):
 class VideoGenerator:
     def __init__(self):
         self.device = "cuda"
-        self.pipeline = self.initialize_pipeline(repo_id)
+        self.pipeline = self.initialize_pipeline(local_dir)
         self.stacked_latents = None
         self.previous_latents = None
         self.generated = False
