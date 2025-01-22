@@ -61,7 +61,6 @@ class TemporalConvLayer(nn.Module):
             nn.Conv3d(out_dim, in_dim, (3, 1, 1), padding=(1, 0, 0)),
         )
 
-        # zero out the last layer params,so the conv block is identity
         nn.init.zeros_(self.conv4[-1].weight)
         nn.init.zeros_(self.conv4[-1].bias)
 
@@ -92,10 +91,8 @@ class PositionalEncodings(torch.nn.Module):
         pe = torch.zeros(seq_len, d_model)
         position = torch.arange(0, seq_len, dtype=torch.float).unsqueeze(1)
 
-        # Normalize position to range [-1, 1] with peak at the center
         normalized_position = (position - (seq_len - 1) / 2) / ((seq_len - 1) / 2)
 
-        # Apply cosine function
         weights = torch.cos(math.pi * normalized_position)
 
         for i in range(d_model):
@@ -128,6 +125,9 @@ class caTConditioningTransformerModel(ModelMixin, ConfigMixin):
         norm_elementwise_affine: bool = True,
     ):
         super().__init__()
+
+        if num_layers == 1:
+            raise ValueError("The number of transformer layers (`num_layers`) must be greater than 1.")
 
         self.encoder_conv_in = nn.Conv3d(4, cross_attention_dim, kernel_size=(1, 1, 1))
 
