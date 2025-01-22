@@ -99,6 +99,7 @@ class caT(ModelMixin, ConfigMixin):
         up_block_types: Tuple[str] = ("UpBlock3D", "CrossAttnUpBlock3D", "CrossAttnUpBlock3D", "CrossAttnUpBlock3D"),
         block_out_channels: Tuple[int] = (320, 640, 1280, 1280),
         layers_per_block: int = 2,
+        conditioning_layers: int = 1,
         downsample_padding: int = 1,
         mid_block_scale_factor: float = 1,
         act_fn: str = "silu",
@@ -110,7 +111,6 @@ class caT(ModelMixin, ConfigMixin):
         super().__init__()
 
         self.sample_size = sample_size
-        self.gradient_checkpointing = False
         # Check inputs
         if len(down_block_types) != len(up_block_types):
             raise ValueError(
@@ -150,7 +150,7 @@ class caT(ModelMixin, ConfigMixin):
             num_attention_heads=8,
             attention_head_dim=attention_head_dim,
             in_channels=block_out_channels[0],
-            num_layers=1,
+            num_layers=conditioning_layers
         )
         self.transformer_in = TransformerTemporalModel(
             num_attention_heads=8,
@@ -180,6 +180,7 @@ class caT(ModelMixin, ConfigMixin):
                 out_channels=output_channel,
                 temb_channels=time_embed_dim,
                 transformer_layers=1,
+                conditioning_layers=conditioning_layers,
                 add_downsample=not is_final_block,
                 resnet_eps=norm_eps,
                 resnet_act_fn=act_fn,
@@ -197,6 +198,7 @@ class caT(ModelMixin, ConfigMixin):
             resnet_eps=norm_eps,
             resnet_act_fn=act_fn,
             transformer_layers=1,
+            conditioning_layers=conditioning_layers,
             output_scale_factor=mid_block_scale_factor,
             cross_attention_dim=cross_attention_dim,
             attention_head_dim=attention_head_dim[-1],
@@ -234,6 +236,7 @@ class caT(ModelMixin, ConfigMixin):
                 temb_channels=time_embed_dim,
                 add_upsample=add_upsample,
                 transformer_layers=1,
+                conditioning_layers=conditioning_layers,
                 resnet_eps=norm_eps,
                 resnet_act_fn=act_fn,
                 resnet_groups=norm_num_groups,
@@ -323,13 +326,6 @@ class caT(ModelMixin, ConfigMixin):
         for module in self.children():
             fn_recursive_set_attention_slice(module, reversed_slice_size)
 
-    def _set_gradient_checkpointing(self, value=False):
-        self.gradient_checkpointing = value
-        self.mid_block.gradient_checkpointing = value
-        for module in self.down_blocks + self.up_blocks:
-            if isinstance(module, (CrossAttnDownBlock3D, DownBlock3D, CrossAttnUpBlock3D, UpBlock3D)):
-                module.gradient_checkpointing = value
-
     def forward(
         self,
         sample: torch.FloatTensor,
@@ -414,18 +410,8 @@ class caT(ModelMixin, ConfigMixin):
         sample = self.conv_in(sample)
 
         if num_frames > 1:
-            if self.gradient_checkpointing:
-                def create_custom_forward(module):
-                    def custom_forward(*inputs):
-                        return module(*inputs)
-
-                    return custom_forward
-                
-                sample = torch.utils.checkpoint.checkpoint(create_custom_forward(self.conditioning_in, return_dict=False), sample, conditioning_hidden_states, num_frames=num_frames)[0]
-                sample = torch.utils.checkpoint.checkpoint(create_custom_forward(self.transformer_in, return_dict=False), sample, num_frames=num_frames)[0]
-            else:
-                sample = self.conditioning_in(sample, conditioning_hidden_states, num_frames=num_frames).sample
-                sample = self.transformer_in(sample, num_frames=num_frames).sample
+            sample = self.conditioning_in(sample, conditioning_hidden_states, num_frames=num_frames).sample
+            sample = self.transformer_in(sample, num_frames=num_frames).sample
 
         # 3. down
         down_block_res_samples = (sample,)
