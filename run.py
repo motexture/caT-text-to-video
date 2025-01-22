@@ -8,7 +8,7 @@ from pipeline.caT import caTPipeline
 from huggingface_hub import snapshot_download
 from diffusers import DPMSolverMultistepScheduler
 
-repo_id = "motexture/caT-text-to-video-2.3b"
+repo_id = "motexture/caT-text-to-video"
 local_dir = "./model"
 
 snapshot_download(repo_id, local_dir=local_dir)
