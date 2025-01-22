@@ -8,12 +8,17 @@ from pipeline.caT import caTPipeline
 from huggingface_hub import snapshot_download
 from diffusers import DPMSolverMultistepScheduler
 
-repo_id = "motexture/caT-text-to-video"
+repo_id = "motexture/caT-text-to-video-2.3b"
 local_dir = "./model"
 
 snapshot_download(repo_id, local_dir=local_dir)
 
 NUM_FRAMES = 8
+
+def count_parameters(model):
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    return total_params, trainable_params
 
 def set_seed(seed):
     torch.manual_seed(seed)
@@ -36,6 +41,9 @@ class VideoGenerator:
         print("Loading pipeline...")
         pipeline = caTPipeline.from_pretrained(pretrained_model_name_or_path=model).to(self.device)
         pipeline.vae.enable_slicing()
+        total_params, trainable_params = count_parameters(pipeline.unet)
+        print(f"Total Parameters: {total_params}")
+        print(f"Trainable Parameters: {trainable_params}")
         return pipeline
 
     def set_scheduler(self, pipeline, solver_type):
@@ -209,4 +217,4 @@ with gr.Blocks() as iface:
         )
 
 if __name__ == "__main__":
-    iface.launch()
+    iface.launch(server_name="0.0.0.0", server_port=7891)
