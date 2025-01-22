@@ -4,7 +4,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math
 
 from dataclasses import dataclass
 from typing import Optional
@@ -37,6 +36,7 @@ class TemporalConvLayer(nn.Module):
         self.in_dim = in_dim
         self.out_dim = out_dim
         
+        # conv layers
         self.conv1 = nn.Sequential(
             nn.GroupNorm(norm_num_groups, in_dim),
             nn.SiLU(),
@@ -61,6 +61,7 @@ class TemporalConvLayer(nn.Module):
             nn.Conv3d(out_dim, in_dim, (3, 1, 1), padding=(1, 0, 0)),
         )
 
+        # zero out the last layer params,so the conv block is identity
         nn.init.zeros_(self.conv4[-1].weight)
         nn.init.zeros_(self.conv4[-1].bias)
 
@@ -83,26 +84,30 @@ class TemporalConvLayer(nn.Module):
         )
         return hidden_states
     
-class PositionalEncodings(torch.nn.Module):
+class BiDirectionalEncodings(torch.nn.Module):
     def __init__(self):
-        super(PositionalEncodings, self).__init__()
+        super(BiDirectionalEncodings, self).__init__()
 
-    def _get_embeddings(self, seq_len, d_model):
+    def _get_embeddings(self, seq_len, d_model, reverse=False):
         pe = torch.zeros(seq_len, d_model)
         position = torch.arange(0, seq_len, dtype=torch.float).unsqueeze(1)
 
-        normalized_position = (position - (seq_len - 1) / 2) / ((seq_len - 1) / 2)
-
-        weights = torch.cos(math.pi * normalized_position)
+        # Normalize the position values to range [0, 1]
+        normalized_position = position / (seq_len - 1)
+        
+        if reverse:
+            weights = 1 - normalized_position  # Reverse: from 1 to 0
+        else:
+            weights = normalized_position     # Forward: from 0 to 1
 
         for i in range(d_model):
             pe[:, i] = weights.squeeze()
         
         return pe.unsqueeze(0)
 
-    def forward(self, x):
+    def forward(self, x, reverse=False):
         _, seq_len, d_model = x.shape
-        pe = self._get_embeddings(seq_len, d_model)
+        pe = self._get_embeddings(seq_len, d_model, reverse)
         return pe.to(x.device)
     
 @dataclass
@@ -117,7 +122,7 @@ class caTConditioningTransformerModel(ModelMixin, ConfigMixin):
         attention_head_dim: int = 88,
         in_channels: Optional[int] = None,
         cross_attention_dim: int = 1280,
-        num_layers: int = 2,
+        num_layers: int = 1,
         only_cross_attention: bool = True,
         dropout: float = 0.0,
         attention_bias: bool = False,
@@ -126,15 +131,12 @@ class caTConditioningTransformerModel(ModelMixin, ConfigMixin):
     ):
         super().__init__()
 
-        if num_layers == 1:
-            raise ValueError("The number of transformer layers (`num_layers`) must be greater than 1.")
-
         self.encoder_conv_in = nn.Conv3d(4, cross_attention_dim, kernel_size=(1, 1, 1))
 
         self.hidden_ln = nn.LayerNorm(in_channels)
         self.hidden_proj_in = nn.Linear(in_channels, cross_attention_dim)
 
-        self.positional_encoding = PositionalEncodings()
+        self.positional_encoding = BiDirectionalEncodings()
 
         self.transformer_blocks = nn.ModuleList(
             [
@@ -191,6 +193,8 @@ class caTConditioningTransformerModel(ModelMixin, ConfigMixin):
 
         encoder_hidden_states = encoder_hidden_states.permute(0, 3, 4, 2, 1)
         encoder_hidden_states = encoder_hidden_states.reshape(e_b * e_h * e_w, e_f, e_c)
+        
+        encoder_hidden_states = encoder_hidden_states + self.positional_encoding(encoder_hidden_states, reverse=False)
 
         hidden_states = hidden_states.permute(0, 3, 4, 2, 1)
         hidden_states = hidden_states.reshape(h_b * h_h * h_w, h_f, h_c)
@@ -198,13 +202,7 @@ class caTConditioningTransformerModel(ModelMixin, ConfigMixin):
         hidden_states = self.hidden_ln(hidden_states)
         hidden_states = self.hidden_proj_in(hidden_states)
 
-        encoder_hidden_states = encoder_hidden_states + self.positional_encoding(
-            torch.cat((encoder_hidden_states, hidden_states), dim=1)
-        )[:, :e_f, :]
-
-        hidden_states = hidden_states + self.positional_encoding(
-            torch.cat((encoder_hidden_states, hidden_states), dim=1)
-        )[:, e_f:, :]
+        hidden_states = hidden_states + self.positional_encoding(hidden_states, reverse=True)
 
         for block in self.transformer_blocks:
             hidden_states = block(
